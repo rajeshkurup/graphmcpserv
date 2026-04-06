@@ -49,6 +49,24 @@ async def _forward_response(resp: httpx.Response) -> list[types.TextContent]:
     }))
 
 
+async def _forward_list_response(
+    resp: httpx.Response, key: str,
+) -> list[types.TextContent]:
+    """Return the response body, unwrapping a ``{key: [...]}`` wrapper if present."""
+    if not resp.is_success:
+        return _text_result(json.dumps({
+            "error": resp.text,
+            "status_code": resp.status_code,
+        }))
+    try:
+        data = resp.json()
+        if isinstance(data, dict) and key in data:
+            return _text_result(json.dumps(data[key]))
+    except (json.JSONDecodeError, ValueError):
+        pass
+    return _text_result(resp.text)
+
+
 # ── Tool catalogue ────────────────────────────────────────────────────
 
 @app.list_tools()
@@ -324,7 +342,7 @@ async def call_tool(name: str, arguments: dict) -> list[types.TextContent]:
             if "status" in arguments:
                 params["status"] = arguments["status"]
             resp = await client.get(f"{GRAPHSERV}/nodes/Anomaly", params=params)
-            return await _forward_response(resp)
+            return await _forward_list_response(resp, "nodes")
 
         if name == "get_node":
             label = arguments["label"]
@@ -333,6 +351,12 @@ async def call_tool(name: str, arguments: dict) -> list[types.TextContent]:
             return await _forward_response(resp)
 
         if name == "root_cause_analysis":
+            # Verify the start node exists before running analysis
+            check = await client.get(
+                f"{GRAPHSERV}/nodes/{arguments['startLabel']}/{arguments['startId']}",
+            )
+            if not check.is_success:
+                return await _forward_response(check)
             body = {
                 "startLabel": arguments["startLabel"],
                 "startId": arguments["startId"],
@@ -362,7 +386,7 @@ async def call_tool(name: str, arguments: dict) -> list[types.TextContent]:
                 if key in arguments:
                     params[key] = arguments[key]
             resp = await client.get(f"{GRAPHSERV}/relationships", params=params)
-            return await _forward_response(resp)
+            return await _forward_list_response(resp, "relationships")
 
         if name == "create_incident_ticket":
             body = {
@@ -392,14 +416,14 @@ async def call_tool(name: str, arguments: dict) -> list[types.TextContent]:
             if "limit" in arguments:
                 params["limit"] = arguments["limit"]
             resp = await client.get(f"{GRAPHSERV}/nodes/RCATicket", params=params)
-            return await _forward_response(resp)
+            return await _forward_list_response(resp, "nodes")
 
         if name == "get_change_tickets":
             params = {}
             if "limit" in arguments:
                 params["limit"] = arguments["limit"]
             resp = await client.get(f"{GRAPHSERV}/nodes/ChangeTicket", params=params)
-            return await _forward_response(resp)
+            return await _forward_list_response(resp, "nodes")
 
         if name == "update_node_status":
             label = arguments["label"]

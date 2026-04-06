@@ -102,19 +102,19 @@ def seed_and_teardown():
         "endTime": "2026-04-05T09:00:00Z",
     })
 
-    # Seed anomaly via /anomalies endpoint (creates DETECTED_ON edge)
-    httpx.post(
-        f"{GRAPHSERV_API}/anomalies",
-        json={
-            "id": ANOMALY_ID,
-            "type": "latency_spike",
-            "severity": "high",
-            "status": "active",
-            "startTime": "2026-04-05T09:55:00Z",
-            "detectedOn": [{"label": "Application", "id": APP_ID}],
-        },
-        timeout=10.0,
-    )
+    # Seed anomaly node and DETECTED_ON relationship separately
+    _create_node("Anomaly", {
+        "id": ANOMALY_ID,
+        "type": "latency_spike",
+        "severity": "high",
+        "status": "active",
+        "startTime": "2026-04-05T09:55:00Z",
+    })
+    httpx.post(f"{GRAPHSERV_API}/relationships", json={
+        "from": {"label": "Anomaly",  "id": ANOMALY_ID},
+        "to":   {"label": "Storage",  "id": STORAGE_ID},
+        "type": "DETECTED_ON",
+    }, timeout=10.0)
 
     # Seed relationships
     httpx.post(f"{GRAPHSERV_API}/relationships", json={
@@ -223,7 +223,7 @@ class TestRootCauseAnalysis:
             "maxDepth": 3,
             "anomalyStatus": "active",
         })
-        # The seeded anomaly is DETECTED_ON the test app
+        # The seeded anomaly is DETECTED_ON the test storage node (1 hop downstream from the app via USES_STORAGE)
         assert ANOMALY_ID in text
 
     async def test_deep_traversal(self):

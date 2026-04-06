@@ -73,7 +73,7 @@ class TestToolCatalogue:
 class TestListAnomalies:
     @respx.mock
     async def test_returns_anomalies(self):
-        payload = [{"id": "ANOM-1", "status": "open"}]
+        payload = {"nodes": [{"id": "ANOM-1", "status": "open"}]}
         respx.get(f"{GRAPHSERV}/nodes/Anomaly").mock(
             return_value=httpx.Response(200, json=payload),
         )
@@ -83,7 +83,7 @@ class TestListAnomalies:
     @respx.mock
     async def test_passes_limit_param(self):
         route = respx.get(f"{GRAPHSERV}/nodes/Anomaly").mock(
-            return_value=httpx.Response(200, json=[]),
+            return_value=httpx.Response(200, json={"nodes": []}),
         )
         await _call("list_anomalies", {"limit": 5})
         assert route.called
@@ -92,7 +92,7 @@ class TestListAnomalies:
     @respx.mock
     async def test_no_params_when_empty(self):
         route = respx.get(f"{GRAPHSERV}/nodes/Anomaly").mock(
-            return_value=httpx.Response(200, json=[]),
+            return_value=httpx.Response(200, json={"nodes": []}),
         )
         await _call("list_anomalies", {})
         assert route.called
@@ -127,6 +127,9 @@ class TestGetNode:
 class TestRootCauseAnalysis:
     @respx.mock
     async def test_posts_correct_body(self):
+        respx.get(f"{GRAPHSERV}/nodes/Application/app-1").mock(
+            return_value=httpx.Response(200, json={"id": "app-1"}),
+        )
         result = {"candidates": 2, "origins": []}
         route = respx.post(f"{GRAPHSERV}/analysis/root-cause").mock(
             return_value=httpx.Response(200, json=result),
@@ -145,6 +148,9 @@ class TestRootCauseAnalysis:
 
     @respx.mock
     async def test_defaults_applied(self):
+        respx.get(f"{GRAPHSERV}/nodes/Storage/db-1").mock(
+            return_value=httpx.Response(200, json={"id": "db-1"}),
+        )
         route = respx.post(f"{GRAPHSERV}/analysis/root-cause").mock(
             return_value=httpx.Response(200, json={}),
         )
@@ -186,7 +192,7 @@ class TestGetRelationships:
     @respx.mock
     async def test_required_params(self):
         route = respx.get(f"{GRAPHSERV}/relationships").mock(
-            return_value=httpx.Response(200, json=[]),
+            return_value=httpx.Response(200, json={"relationships": []}),
         )
         await _call("get_relationships", {
             "fromLabel": "Application",
@@ -200,7 +206,7 @@ class TestGetRelationships:
     @respx.mock
     async def test_optional_target_filter(self):
         route = respx.get(f"{GRAPHSERV}/relationships").mock(
-            return_value=httpx.Response(200, json=[]),
+            return_value=httpx.Response(200, json={"relationships": []}),
         )
         await _call("get_relationships", {
             "fromLabel": "Application",
@@ -277,7 +283,7 @@ class TestLinkIncidentToNode:
 class TestGetRCATickets:
     @respx.mock
     async def test_returns_tickets(self):
-        payload = [{"id": "RCA-1"}]
+        payload = {"nodes": [{"id": "RCA-1"}]}
         respx.get(f"{GRAPHSERV}/nodes/RCATicket").mock(
             return_value=httpx.Response(200, json=payload),
         )
@@ -291,7 +297,7 @@ class TestGetRCATickets:
 class TestGetChangeTickets:
     @respx.mock
     async def test_returns_tickets(self):
-        payload = [{"id": "CHG-1"}]
+        payload = {"nodes": [{"id": "CHG-1"}]}
         respx.get(f"{GRAPHSERV}/nodes/ChangeTicket").mock(
             return_value=httpx.Response(200, json=payload),
         )
