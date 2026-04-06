@@ -321,6 +321,8 @@ async def call_tool(name: str, arguments: dict) -> list[types.TextContent]:
             params: dict = {}
             if "limit" in arguments:
                 params["limit"] = arguments["limit"]
+            if "status" in arguments:
+                params["status"] = arguments["status"]
             resp = await client.get(f"{GRAPHSERV}/nodes/Anomaly", params=params)
             return await _forward_response(resp)
 
